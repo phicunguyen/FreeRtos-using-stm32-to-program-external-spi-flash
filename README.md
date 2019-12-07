@@ -1,12 +1,17 @@
 # FreeRtos-using-stm32-to-program-external-spi-flash
-if your system need to program an external spi flash for storing data such as audio data, osd or user data configure, this demo will show you how to open a binary file from window and send it to stm32 to program the spi flash.
+if your system need to program an external spi flash for storing data such as audio data, osd or user data configuration, then this demo will show you how to open a binary file from window and send it to stm32 to program the spi flash.
 
+This demo code in window has four tasks (freertos):
+  
+    1. The two Led task send command to stm32 to turn the led on/off
+    2. The third tash is the download task. It open a binary file (led.bin (9kb))
+       and send a buffer of 256 bytes + header to stm32 until end of file.
+    3. The four task is checking the data from stm32 over serial port and display it on window.
+    
 How to run it:
   
-    1. Use stm32 st-link utility to program the stm32f407-disco board with stm32f407disco_vcp_led.hex.
-    2. From window, run SerialLedBlinking.exe. 
-
-The stm32 firmware will blink the green led every 200ms and the SerialLedBlinking will blink the red led very 200ms. 
+    1. Use stm32 st-link utility to program the stm32f407-disco board with stm32f407disco_vcp_flash.hex.
+    2. From window, run Serialflash.exe. 
 
 You need to select the comport for your stm32f407-disco board in my case it's COM72.
 
@@ -15,7 +20,53 @@ You need to select the comport for your stm32f407-disco board in my case it's CO
     1: STMicroelectronics Virtual COM Port (COM72)
     Please select comport: 1
     Serial port open successfully
-    press any key to exit:
+    
+    
+        addr 0 len: 532
+        addr 100 len: 532
+        addr 200 len: 532
+        …….
+        addr 1f00 len: 532
+        addr 2000 len: 172
+
+        addr 0 len: 532
+        addr 100 len: 532
+        addr 200 len: 532
+        ….
+        addr 1f00 len: 532
+        addr 2000 len: 172
+
+On Stm32:
+
+    The stm32 firmware will blink the green led every 200ms.
+
+On Window:
+    The serialflash has four tasks:
+      
+      1. LedTask1 - every 200ms send a command to stm32 to turn on/off the led.
+      2. LedTask2 - every 200ms send a command to stm32 to turn on/off the led.
+      
+This is the vLedTask1 and vLedTask2 is same except for the led number buf[2] = 0x02.
+
+          static void vLedTask1(void *parg) {
+            uint8_t buf[12];
+            bool led=false;
+            parg = parg;
+            buf[0] = SERIAL_PACKET__LED;	//opcode low byte
+            buf[1] = 0x00;					//opcode high byte
+            buf[2] = 0x01;					//led number
+            parg = parg;
+            while (true) {
+              buf[3] = led ? 0x01 : 0x0;		//led on/off
+              led = !led;
+              xSemaphoreTake(xMutex, portMAX_DELAY);
+              adapter.write(&adapter, buf, 4);
+              xSemaphoreGive(xMutex);
+              vTaskDelay(200);
+              taskYIELD();
+            }
+          }
+  
 
 If you stop the SerialLedBlinking.exe then the red led is also stop but the green led is still blinking (the green led is updated by the idle task in stm32 (freertos default task).
    
@@ -30,28 +81,8 @@ The packet sending from window to stm32 as below.
       5. All the data bytes and including the opcode will be convert to ascii except the '[' and ']'
       6. Every hex byte now become two ascii bytes.
 
-This is the freertos task on window to send the the led blinking packet to stm32 over serial port every 200ms.
 
-      void vLedTask(void *arg) {
-        uint8_t buf[4];                      //buffer to hold led packet
-        bool led=false;
-        arg = arg;                           //avoid warning
-        buf[0] = SERIAL_PACKET__LED;         //opcode low byte
-        buf[1] = 0x00;                       //opcode high byte
-        buf[2] = 0x01;                       //led number
-        while (true) {
-          buf[3] = led ? 0x01 : 0x0;         //led on/off
-          led = !led;
-          adapter.write(&adapter, buf, 4);   //this will form a packet with '[' and ']' and send it
-          vTaskDelay(200);                   //delay 200ms
-          if (_kbhit() != 0) {               //exit the program if any key is pressed.
-            printf("exit\n");
-            vTaskEndScheduler();
-          }
-        }
-      }
-  
 This code does not have any flow control. it could cause the data overwritten if the sending is faster than the receving.
-Every packet send should have a response packet. That will be my goal.
+Every packet send should have a response packet. That will be next my goal to implement this feature.
 
 
