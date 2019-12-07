@@ -38,7 +38,7 @@ You need to select the comport for your stm32f407-disco board in my case it's CO
 
 On Stm32:
 
-    The stm32 firmware will blink the green led every 200ms.
+    The idle task (freertos) on stm32 firmware will blink the green led every 200ms.
 
 On Window:
     The serialflash has four tasks:
