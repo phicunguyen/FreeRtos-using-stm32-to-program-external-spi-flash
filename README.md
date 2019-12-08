@@ -4,7 +4,7 @@ if your system need to program an external spi flash for storing data such as au
 This demo code in window has four tasks (freertos):
   
     1. The two Led task send command to stm32 to turn the led on/off
-    2. The third tash is the download task. It open a binary file (led.bin (9kb))
+    2. The third tash is the download task. It's open a binary file (led.bin (9kb))
        and send a buffer of 256 bytes + header to stm32 until end of file.
     3. The four task is checking the data from stm32 over serial port and display it on window.
     
@@ -67,8 +67,49 @@ This is the vLedTask1 and vLedTask2 is same except for the led number buf[2] = 0
             }
           }
   
+The vDownloadTask call get_bin_file which uses to open the led.bin file and send 256 bytes each times to stm32. 
 
-If you stop the SerialLedBlinking.exe then the red led is also stop but the green led is still blinking (the green led is updated by the idle task in stm32 (freertos default task).
+        static void vDownloadTask(void *parg) {
+          parg = parg;
+          while (true) {
+            get_bin_file();
+          }
+        }
+
+        static void get_bin_file(void) {
+          FILE *fptr;
+          uint8_t buf[256];
+
+          uint32_t addr = 0;
+          uint32_t size=256;
+          
+          //open the binary file
+          if ((fptr = fopen(pfile, "rb")) == NULL) { 
+            printf("found not found"); 
+            return; 
+          };
+
+          //read until end of file
+          while (!feof(fptr)) {
+            xSemaphoreTake(xMutex, portMAX_DELAY);
+            
+            //read 256 bytes each time
+            //fread return number of succecfull bytes read
+            //size will have either 256 bytes or the remaining bytes.
+            size = fread(buf, sizeof(buf[0]), size, fptr);
+            //send it to stm32
+            adapter.flash(&adapter, buf, size, addr);
+            //next address in the flash to be program
+            addr += size;   
+            
+            xSemaphoreGive(xMutex);
+            vTaskDelay(1);
+            taskYIELD();
+          }
+          fclose(fptr);
+        }
+
+
    
 The packet sending from window to stm32 as below.
      
