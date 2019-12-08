@@ -22,16 +22,16 @@ You need to select the comport for your stm32f407-disco board in my case it's CO
     Serial port open successfully
     
     
-        addr 0 len: 532
-        addr 100 len: 532
-        addr 200 len: 532
-        …….
-        addr 1f00 len: 532
-        addr 2000 len: 172
-
-        addr 0 len: 532
-        addr 100 len: 532
-        addr 200 len: 532
+        addr 0 len: 532                         //This is the data sending back from stm32
+        addr 100 len: 532                       //only the address and the length is sending back for debuging purpose.
+        addr 200 len: 532                       //why 532 bytes?
+        …….                                     //1 bytes for start of packet '['     
+        addr 1f00 len: 532                      //4 bytes for opcode (2 hex bytes convert to 4 ascii bytes) 
+        addr 2000 len: 172                      //8 bytes for address (4 hex bytes convert to 8 ascii bytes) 
+                                                //4 bytes for the size (2 hex bytes convert to 8 ascii bytes)
+        addr 0 len: 532                         //512 bytes of the data (256 hex bytes convert to 512 ascii bytes)
+        addr 100 len: 532                       //1 bytes for end of packet ']' 
+        addr 200 len: 532                       //\r\n 
         ….
         addr 1f00 len: 532
         addr 2000 len: 172
